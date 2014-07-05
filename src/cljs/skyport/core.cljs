@@ -4,7 +4,8 @@
             [clojure.string :as str]
             [chord.client :as socket :refer (ws-ch)]
             [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]))
+            [om.dom :as dom :include-macros true]
+            [clojure.browser.repl]))
 
 (enable-console-print!)
 
@@ -78,9 +79,12 @@
   (reify
     om/IRender
     (render [_]
-      (dom/div #js {:id "world"}
-       (dom/svg #js {:width "50%" :height "50%"}
-        (apply dom/g nil
+      (dom/div
+       #js {:id "world"}
+       (dom/svg
+        #js {:width "50%" :height "50%"}
+        (apply dom/g
+               #js {}
                (om/build-all hexagon-view
                              (let [data (:data state)]
                                (for [j (range (count data))
@@ -97,4 +101,4 @@
                              (:players state))))))))
 
 (om/root world-view state
-  {:target (.getElementById js/document "app")})
+         {:target (.getElementById js/document "app")})
