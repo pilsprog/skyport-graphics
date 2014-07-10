@@ -89,25 +89,28 @@
     (js/setTimeout (fn [] (close! c)) ms)
     c))
 
-(go
-  (loop [{:keys [ws-channel error]}
-         (<! (ws-ch "ws://localhost:54331"
-                   {:format :json}))]
-    (if error
-      (do
-        (println error)
-        (<! (timeout 1000))
-        {:keys [ws-channel error]}
-        (recur (<! (ws-ch "ws://localhost:54331"
-                          {:format :json}))))
-      (loop [{:keys [message error]} (<! ws-channel)]
-        (if error
-          (println (str "-- " error))
-          (let [m (keywordize-keys message)]
-            (println (type (get m :message)))
-            (handle-message! m)
-            (println m)
-            (recur (<! ws-channel))))))))
+
+(go-loop [{:keys [ws-channel error]}
+          (<! (ws-ch "ws://localhost:54331"
+                     {:format :json}))]
+  ;; If there is an error we print the error and try again in a
+  ;; second. If there isn't an error we loop forever in the message
+  ;; channel. If the message channel provides an error we try to
+  ;; connect again in a second.
+  (if error
+    (println error)
+    (loop [{:keys [message error]} (keywordize-keys
+                                    (<! ws-channel))]
+      (if error
+        (println "-- " error)
+        (do
+          (println message)
+          (handle-message! message)
+          (recur (<! ws-channel))))))
+  ;; wait 1 second before continuing.
+  (<! (timeout 1000))
+  (recur (<! (ws-ch "ws://localhost:54331"
+                    {:format :json}))))
 
 (def tile-type {"G" "grass"
                 "V" "void"
