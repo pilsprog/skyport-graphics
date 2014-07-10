@@ -1,12 +1,60 @@
-body {
-    font-size: 14px;
-    line-height: 20px;
-}
-
 text {
     font-size: 10px;
     stroke-width: 0.2px;
     text-anchor: middle;
+}
+
+.header {
+    text-align: center;
+    margin: auto;
+
+}
+
+.players {
+    position: absolute;
+    top: 10;
+    left: 10;
+}
+
+.players > .player {
+    display: inline-block;
+    margin-top: -1em;
+    margin-left: 10px;
+    padding: 5px;
+    /* border: 1px solid gray; */
+    border-radius: 8px;
+    width: 100px;
+    background-color: hsl(60, 10%, 95%);
+    -moz-box-shadow:    1px 1px 1px 1px #ccc;
+    -webkit-box-shadow: 1px 1px 1px 1px #ccc;
+    box-shadow:         1px 1px 1px 1px #ccc;
+}
+
+.attr > .value {
+    display: inline-block;
+}
+
+h2.name {
+    margin: auto;
+}
+
+.weapon > * {
+    margin-left: 5%;
+    display: inline-block;
+}
+
+.weapon > .name {
+    width: 50%;
+    text-align: -webkit-right;
+}
+
+.weapon > .level {
+    width 50%;
+}
+
+.turn {
+    text-align: center;
+    margin: auto;
 }
 
 
@@ -19,12 +67,85 @@ svg {
     margin: auto;
 }
 
-polygon {
-    fill: hsl(60, 10%, 95%);
+.hexagon {
     stroke: hsl(0, 0%, 70%);
     stroke-width: 0.5;
 }
 
+.hexagon > text {
+    fill: white;
+    stroke: black;
+    display: none;
+}
+
 #world {
     margin: auto;
+}
+
+
+.grass  {
+    fill: green;
+}
+
+.void {
+    /* fill: hsl(60, 10%, 95%); */
+    display: none;
+}
+
+.spawn {
+    fill: pink;
+}
+
+.explosium {
+    fill: yellow;
+}
+
+.rubidium {
+    fill: red;
+}
+
+.scrap {
+    fill: gray;
+}
+
+.rock {
+    fill: black;
+}
+
+@-webkit-keyframes display {
+    0% {
+        opacity: 1;
+        -webkit-transform: translateY(0px);
+    }
+    80% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        -webkit-transform: translateY(-50px);
+    }
+}
+
+.display {
+    opacity: 0;
+    -webkit-animation: display 1.5s 1;
+}
+
+text.damage {
+    font-size: 25px;
+}
+
+@-webkit-keyframes shoot-laser {
+    0%   {
+        opacity: 0;
+    }
+    30%  {
+        opacity: 0.9;
+    }
+    100% { opacity: 1;   }
+}
+
+.laser {
+    opacity: 0;
+    -webkit-animation: shoot-laser .7s 2 alternate ease-in;
 }
