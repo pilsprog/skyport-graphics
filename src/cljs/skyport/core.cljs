@@ -1,6 +1,6 @@
 (ns skyport.core
   (:require-macros [cljs.core.async.macros :refer (go go-loop)])
-  (:require [cljs.core.async :refer (<! >! put! chan close!)]
+  (:require [cljs.core.async :refer (<! chan close! map<)]
             [clojure.string :as str]
             [clojure.walk :refer [keywordize-keys]]
             [chord.client :as socket :refer (ws-ch)]
@@ -43,18 +43,52 @@
                     :position [12 0]}]
          :message "gamestate"}))
 
+(defn coords-to-pixel [[j k]]
+  [(+ X-OFFSET (* TILE-SIZE
+                  (/ 3 2)
+                  (+ 2 (- k j))))
+   (+ Y-OFFSET (* (/ TILE-SIZE 2)
+                  (js/Math.sqrt 3)
+                  (+ k (- j 2))))])
+
 
 (defmulti handle-action :type)
 
-(defmethod handle-action :direction ;; laser
+(defmethod handle-action "laser"
+  [{:keys [from stop] :as action}]
+  (let [start (->> @state
+                  :players
+                  (drop-while (comp (partial not= from)
+                                    :name))
+                  first
+                  :position)]
+    (swap! state assoc :action
+           (assoc action
+             :start (coords-to-pixel start)
+             :stop (coords-to-pixel stop)))))
+
+(defmethod handle-action "droid"
   [action]
-  )
+  (swap! state assoc :action action))
 
-(defmethod handle-action :sequence    ;; droid
-  [action])
+(defmethod handle-action "mortar"
+  [action]
+  (swap! state assoc :action action))
 
-(defmethod handle-action :coordinates ;; mortar
-  [action])
+(defmethod handle-action "move"
+  [{:keys [direction from]}]
+  (let [[x y] (case direction
+                "up"         [-1 -1]
+                "left-up"    [ 0 -1]
+                "right-up"   [-1  0]
+                "down"       [ 1  1]
+                "left-down"  [ 1  0]
+                "right-down" [ 0  1])]
+    (swap! state update-in [:players]
+           (partial mapv (fn [{:keys [name position] :as player}]
+                           (if-not (= name from)
+                             player
+                             (assoc-in player [:position] (mapv + [x y] position))))))))
 
 (defmethod handle-action :default [_]
   ;; Do nothing.
@@ -78,9 +112,9 @@
   [action]
   (handle-action action))
 
-(defmethod handle-message! :default [_]
+(defmethod handle-message! :default [message]
   ;; Do nothing.
-  )
+  (println message))
 
 
 
@@ -99,13 +133,11 @@
   ;; connect again in a second.
   (if error
     (println error)
-    (loop [{:keys [message error]} (keywordize-keys
-                                    (<! ws-channel))]
+    (loop [{:keys [message error]} (<! ws-channel)]
       (if error
         (println "-- " error)
         (do
-          (println message)
-          (handle-message! message)
+          (handle-message! (keywordize-keys message))
           (recur (<! ws-channel))))))
   ;; wait 1 second before continuing.
   (<! (timeout 1000))
@@ -144,14 +176,6 @@
         [:text {:x x :y y}
          label]]))))
 
-(defn coords-to-pixel [[j k]]
-  [(+ X-OFFSET (* TILE-SIZE
-                  (/ 3 2)
-                  (+ 2 (- k j))))
-   (+ Y-OFFSET (* (/ TILE-SIZE 2)
-                  (js/Math.sqrt 3)
-                  (+ k (- j 2))))])
-
 (defn damage-view [{:keys [x y text]} owner]
   (reify
     om/IRender
@@ -173,12 +197,13 @@
          width 20
          angle (* (js/Math.atan2 x_d y_d)
                   (/ -180 js/Math.PI))]
-     [:rect
-      {:class "laser"
-       :x (- x_2 (/ width 2)) :y y_2
-       :width width :height height
-       :transform (str "rotate(" angle" " x_2 " " y_2 ")")
-       :fill "url(#laser-shot)"}])))
+     [:g
+      [:rect
+       {:class "laser"
+        :x (- x_2 (/ width 2)) :y y_2
+        :width width :height height
+        :transform (str "rotate(" angle" " x_2 " " y_2 ")")
+        :fill "url(#laser-shot)"}]])))
 
 
 (defn player-view [{:keys [name position text]} owner]
@@ -193,6 +218,19 @@
                     :cx x
                     :cy y
                     :r (/ TILE-SIZE 2)}]])))))
+
+(defmulti action-view :type)
+(defmethod action-view "laser"
+  [{:keys [start stop]}]
+  (laser-shot start stop))
+(defmethod action-view "droid"
+  [action]
+  (html [:g]))
+(defmethod action-view "mortar"
+  [action]
+  (html [:g]))
+(defmethod action-view :default [_]
+  (html [:g]))
 
 (defn world-view [state owner]
   (reify
@@ -216,7 +254,8 @@
                                          :y y
                                          :label (get-in data [j k])
                                          :size TILE-SIZE}))]
-           [:g (om/build-all player-view (:players state))]]])))))
+           [:g (om/build-all player-view (:players state))]
+           (om/build action-view (:action state))]])))))
 
 (defn weapon-interface-view [{:keys [name level]} owner]
   (reify
