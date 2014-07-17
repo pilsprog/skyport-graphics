@@ -43,14 +43,9 @@
                     :position [12 0]}]
          :message "gamestate"}))
 
-(defn coords-to-pixel [[j k]]
-  [(+ X-OFFSET (* TILE-SIZE
-                  (/ 3 2)
-                  (+ 2 (- k j))))
-   (+ Y-OFFSET (* (/ TILE-SIZE 2)
-                  (js/Math.sqrt 3)
-                  (+ k (- j 2))))])
-
+(defn parse-coords [coords]
+  (mapv (comp js/parseInt str/trim)
+        (str/split coords ",")))
 
 (defmulti handle-action :type)
 
@@ -63,9 +58,7 @@
                   first
                   :position)]
     (swap! state assoc :action
-           (assoc action
-             :start (coords-to-pixel start)
-             :stop (coords-to-pixel stop)))))
+           (assoc action :start start :stop (parse-coords stop)))))
 
 (defmethod handle-action "droid"
   [action]
@@ -96,8 +89,8 @@
 
 (defn parse-position [player]
   (assoc player
-    :position (mapv (comp js/parseInt str/trim)
-                    (str/split (:position player) ","))))
+    :position (parse-coords
+               (:position player))))
 
 (defmulti handle-message! :message)
 
@@ -185,6 +178,14 @@
         [:text {:class "damage" :x x :y y}
          text]]))))
 
+(defn coords-to-pixel [[j k]]
+  [(+ X-OFFSET (* TILE-SIZE
+                  (/ 3 2)
+                  (+ 2 (- k j))))
+   (+ Y-OFFSET (* (/ TILE-SIZE 2)
+                  (js/Math.sqrt 3)
+                  (+ k (- j 2))))])
+
 (defn laser-shot [{:keys [start stop]}]
   (html
    (let [[x_1 y_1] (coords-to-pixel start)
@@ -192,8 +193,8 @@
          x_d (- x_1 x_2)
          y_d (- y_1 y_2)
          height (+ TILE-SIZE
-                   (js/Math.sqrt (js/Math.pow x_d 2)
-                                 (js/Math.pow y_d 2)))
+                   (js/Math.sqrt (+ (js/Math.pow x_d 2)
+                                    (js/Math.pow y_d 2))))
          width 20
          angle (* (js/Math.atan2 x_d y_d)
                   (/ -180 js/Math.PI))]
@@ -221,8 +222,8 @@
 
 (defmulti action-view :type)
 (defmethod action-view "laser"
-  [{:keys [start stop]}]
-  (laser-shot start stop))
+  [shot]
+  (laser-shot shot))
 (defmethod action-view "droid"
   [action]
   (html [:g]))
@@ -267,7 +268,13 @@
              [:div {:class "level"}
               level]]))))
 
-(defn player-interface-view [{:keys [name position health score primary-weapon secondary-weapon]} owner]
+(defn player-interface-view [{:keys [name
+                                     position
+                                     health
+                                     score
+                                     primary-weapon
+                                     secondary-weapon]}
+                             owner]
   (reify
     om/IRender
     (render [_]
@@ -277,7 +284,7 @@
              [:div {:class "attr"}
               "Position: "
               [:div {:class "value"}
-                (str/join " " position)]]
+               (str/join " " position)]]
              [:div {:class "attr"}
               (str "HP: ")
               [:div {:class "value"}
