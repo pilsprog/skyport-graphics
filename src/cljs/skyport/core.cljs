@@ -131,6 +131,8 @@
         (println "-- " error)
         (do
           (handle-message! (keywordize-keys message))
+          ;; Wait a second before doing the next message.
+          (<! (timeout 1000))
           (recur (<! ws-channel))))))
   ;; wait 1 second before continuing.
   (<! (timeout 1000))
