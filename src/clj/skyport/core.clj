@@ -17,7 +17,7 @@
   (resources "/")
   (GET "/*" req (page)))
 
-(defn run
+(defn -main []
   []
   (defonce ^:private server
     (jetty/run-jetty #'site {:port 8080 :join? false})))

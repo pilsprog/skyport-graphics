@@ -15,11 +15,12 @@
                  [enlive "1.1.5"]
                  [compojure "1.1.8"]
                  [ring "1.3.0"]]
+  :main skyport.core
   :profiles {:dev {:plugins [[com.cemerick/austin "0.1.4"]
                              [lein-cljsbuild "1.0.3"]]
                    :repl-options {:init-ns skyport.core
                                   :init (do
-                                          (run)
+                                          (-main)
                                           (defn browser-repl []
                                             (def repl-env
                                               (reset! cemerick.austin.repls/browser-repl-env
