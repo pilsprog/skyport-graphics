@@ -30,10 +30,6 @@ text {
     box-shadow:         1px 1px 1px 1px #ccc;
 }
 
-.attr > .value {
-    display: inline-block;
-}
-
 h2.name {
     margin: auto;
 }

@@ -270,7 +270,7 @@
       (html [:div {:class "weapon"}
              [:div {:class "name"}
               name]
-             [:div {:class "level"}
+             [:span {:class "level"}
               level]]))))
 
 (defn player-interface-view [{:keys [name
@@ -288,15 +288,15 @@
               name]
              [:div {:class "attr"}
               "Position: "
-              [:div {:class "value"}
+              [:span {:class "value"}
                (str/join " " position)]]
              [:div {:class "attr"}
               (str "HP: ")
-              [:div {:class "value"}
+              [:span {:class "value"}
                health]]
              [:div {:class "attr"}
               "Score: "
-              [:div {:class "value"}
+              [:span {:class "value"}
                score]]
              [:div {:class "primary"}
               "Primary: "
