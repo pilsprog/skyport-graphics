@@ -253,11 +253,14 @@
            [:g (for [j (range (count data))
                      k (range (count (data j)))
                      :let [[x y] (coords-to-pixel [j k])]]
-                 (om/build hexagon-view {:x x
-                                         :y y
-                                         :label (get-in data [j k])
-                                         :size TILE-SIZE}))]
-           [:g (om/build-all player-view (:players state))]
+                 (om/build hexagon-view
+                           {:x x
+                            :y y
+                            :label (get-in data [j k])
+                            :key [j k]
+                            :size TILE-SIZE}
+                           {:key :key}))]
+           [:g (om/build-all player-view (:players state) {:key :name})]
            (om/build action-view (:action state))]])))))
 
 (defn weapon-interface-view [{:keys [name level]} owner]
@@ -313,7 +316,8 @@
               (str "Turn " turn)]
              [:div {:class "players"}
               (om/build-all player-interface-view
-                            players)]]))))
+                            players
+                            {:key :name})]]))))
 
 (defn app-view [state owner]
   (reify
