@@ -108,6 +108,21 @@ svg {
     fill: black;
 }
 
+@-webkit-keyframes damage {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.dmg {
+    fill: red;
+    opacity: 0;
+    -webkit-animation: damage 1s 1;
+}
+
 @-webkit-keyframes display {
     0% {
         opacity: 1;
