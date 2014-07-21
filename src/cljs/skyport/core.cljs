@@ -277,7 +277,39 @@
                     :cy y
                     :r (/ TILE-SIZE 2)}]])))))
 
-(defmulti action-view :type)
+(defn droid-shot [{:keys [sequence from]} owner]
+  (reify
+    om/IInitState
+    (init-state [_]
+      {:sequence (reductions (partial mapv +)
+                             (:position (player! from))
+                             sequence)
+       :explosion nil
+       :time (/ 1000 (dec (count sequence)))
+       })
+    om/IRenderState
+    (render-state [_ {:keys [sequence explosion time]}]
+      (when-not (empty? sequence)
+        (js/setTimeout
+         (fn []
+           (let [[coord & sequence] sequence]
+             (om/set-state!
+              owner :sequence sequence)
+             (om/set-state!
+              owner :explosion (if (empty? sequence)
+                                 coord))))
+         time))
+      (if-let [[coord & _] sequence]
+        (let [[x y] (coords-to-pixel coord)]
+          (html
+           [:g {:class "droid"}
+            [:circle {:fill "black"
+                      :cx x
+                      :cy y
+                      :r (/ TILE-SIZE 3)}]]))
+        (om/build mortar-shot {:coord explosion
+                               :radius 1})))))
+
 (defmulti action-view
   (fn [action _] (:type action)))
 
