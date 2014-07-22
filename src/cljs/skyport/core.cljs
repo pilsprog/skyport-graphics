@@ -244,8 +244,9 @@
          ;; path correctly we move the point up one hexagon each turn
          ;; around the point, including the first round. We then take
          ;; the current coordinate and add move it around the
-         ;; path. Lastly, because the each circle is completes back at
-         ;; its origin we remove all the extra points.
+         ;; path. Lastly, because the each circle completes back at
+         ;; the same place it started we remove these all the extra
+         ;; points.
          hits (->> circle
                    repeat
                    (reductions interleave)
@@ -263,20 +264,6 @@
                           :label "D"
                           :position [j k]})
                        {:key :position})])))
-
-(defn player-view [{:keys [name position text]} owner]
-  (reify
-    om/IRender
-    (render [_]
-      (let [[x y] (coords-to-pixel position)]
-        (html
-         [:g {:id name
-              :class "player"}
-          [:circle {:fill "blue"
-                    :cx x
-                    :cy y
-                    :r (/ TILE-SIZE 2)}]])))))
-
 (defn droid-shot [{:keys [sequence from]} owner]
   (reify
     om/IInitState
@@ -327,6 +314,19 @@
 
 (defmethod action-view :default [_ _]
   (html [:g]))
+
+(defn player-view [{:keys [name position text]} owner]
+  (reify
+    om/IRender
+    (render [_]
+      (let [[x y] (coords-to-pixel position)]
+        (html
+         [:g {:id name
+              :class "player"}
+          [:circle {:fill "blue"
+                    :cx x
+                    :cy y
+                    :r (/ TILE-SIZE 2)}]])))))
 
 (defn world-view [state owner]
   (reify
