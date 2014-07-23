@@ -213,9 +213,8 @@
          [x_2 y_2] (coords-to-pixel stop)
          x_d (- x_1 x_2)
          y_d (- y_1 y_2)
-         height (+ TILE-SIZE
-                   (js/Math.sqrt (+ (js/Math.pow x_d 2)
-                                    (js/Math.pow y_d 2))))
+         height (js/Math.sqrt (+ (js/Math.pow x_d 2)
+                                 (js/Math.pow y_d 2)))
          width 20
          angle (* (js/Math.atan2 x_d y_d)
                   (/ -180 js/Math.PI))]
@@ -262,6 +261,7 @@
                           :label "D"
                           :position [j k]})
                        {:key :position})])))
+
 (defn droid-shot [{:keys [sequence from]} owner]
   (reify
     om/IInitState
