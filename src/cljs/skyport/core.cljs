@@ -364,7 +364,7 @@
     om/IRender
     (render [_]
       (html [:div {:class "weapon"}
-             [:div {:class "name"}
+             [:span {:class "name"}
               name]
              [:span {:class "level"}
               level]]))))
