@@ -324,7 +324,10 @@
           [:circle {:fill "blue"
                     :cx x
                     :cy y
-                    :r (/ TILE-SIZE 2)}]])))))
+                    :r (/ TILE-SIZE 2)}]
+          [:text {:x x
+                  :y (- y TILE-SIZE -12)}
+           name]])))))
 
 (defn world-view [state owner]
   (reify
