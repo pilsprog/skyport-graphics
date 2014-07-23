@@ -341,17 +341,19 @@
              [:stop {:style {:stop-color "red"
                              :stop-opacity 1} :offset "50%"}]
              [:stop {:style {:stop-opacity 0} :offset "100%"}]]]
-           [:g (for [j (range (count data))
-                     k (range (count (data j)))
-                     :let [[x y] (coords-to-pixel [j k])]]
-                 (om/build hexagon-view
-                           {:x x
-                            :y y
-                            :label (get-in data [j k])
-                            :position [j k]
-                            :size TILE-SIZE}
-                           {:key :position}))]
-           [:g (om/build-all player-view (:players state) {:key :name})]
+           [:g {:id "hexagons"}
+            (for [j (range (count data))
+                  k (range (count (data j)))
+                  :let [[x y] (coords-to-pixel [j k])]]
+              (om/build hexagon-view
+                        {:x x
+                         :y y
+                         :label (get-in data [j k])
+                         :position [j k]
+                         :size TILE-SIZE}
+                        {:key :position}))]
+           [:g {:id "players"}
+            (om/build-all player-view (:players state) {:key :name})]
            (om/build action-view (:action state))]])))))
 
 (defn weapon-interface-view [{:keys [name level]} owner]
