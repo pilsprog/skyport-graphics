@@ -112,28 +112,27 @@
     :position (parse-coords
                (:position player))))
 
+(defn timeout [ms]
+  (let [c (chan)]
+    (js/setTimeout (fn [] (close! c)) ms)
+    c))
+
 (defmulti handle-message! :message)
 
 (defmethod handle-message! "gamestate"
   [gamestate]
   (let [new-state (update-in gamestate [:players]
                              (partial map parse-position))]
-    (println new-state)
-    (reset! state new-state)))
+    (reset! state new-state)
+    (timeout 0)))
 
 (defmethod handle-message! "action"
   [action]
-  (handle-action action))
+  (handle-action action)
+  (timeout 1000))
 
 (defmethod handle-message! :default [message]
-  ;; Do nothing.
-  (println message))
-
-(defn timeout [ms]
-  (let [c (chan)]
-    (js/setTimeout (fn [] (close! c)) ms)
-    c))
-
+  (timeout 0))
 
 (go-loop [{:keys [ws-channel error]}
           (<! (ws-ch "ws://localhost:54331"
@@ -148,9 +147,8 @@
       (if error
         (println "-- " error)
         (do
-          (handle-message! (keywordize-keys message))
-          ;; Wait a second before doing the next message.
-          (<! (timeout 1000))
+          (println "MESSAGE: " message)
+          (<! (handle-message! (keywordize-keys message)))
           (recur (<! ws-channel))))))
   ;; wait 1 second before continuing.
   (<! (timeout 1000))
