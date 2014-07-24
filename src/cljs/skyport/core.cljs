@@ -2,6 +2,7 @@
   (:require-macros [cljs.core.async.macros :refer (go go-loop)])
   (:require [cljs.core.async :refer (<! chan close! map<)]
             [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.walk :refer [keywordize-keys]]
             [chord.client :as socket :refer (ws-ch)]
             [om.core :as om :include-macros true]
@@ -63,36 +64,54 @@
     "left-down"  [ 1  0]
     "right-down" [ 0  1]))
 
+(defn length [[ax ay] [bx by]]
+  (js/Math.sqrt
+   (+ (js/Math.pow (- ax bx) 2)
+      (js/Math.pow (- ay by) 2))))
+
+(defn get-weapon [player weapon]
+  (first
+   (drop-while (comp (partial not= weapon) :name)
+               (select-keys player
+                            [:primary-weapon
+                             :secondary-weapon]))))
+
 (defmulti handle-action :type)
 
 (defmethod handle-action "laser"
-  [{:keys [from stop] :as action}]
-  (swap! state assoc :action
-         (assoc action
-           :start (:position (player! from))
-           :stop (parse-coords stop))))
+  [{:keys [from stop direction] :as action}]
+  (let [player (player! from)
+        level (:level (get-weapon player "laser"))]
+    (swap! state assoc :action
+           (assoc action
+             :start (:position player)
+             :stop (parse-coords stop)
+             :dmg (+ 16 (* 2 (dec level)))))))
 
 (defmethod handle-action "droid"
-  [{:keys [sequence] :as action}]
-  (swap! state assoc :action
-         (assoc action
-           :sequence (mapv direction->coord
-                           sequence))))
+  [{:keys [sequence from] :as action}]
+  (let [level (:level (get-weapon (player! from) "droid"))]
+    (swap! state assoc :action
+           (assoc action
+             :sequence (mapv direction->coord
+                             sequence)
+             :dmg (+ 20 (* 2 level))))))
 
 (defmethod handle-action "mortar"
-  [{:keys [from coordinates]}]
+  [{:keys [from coordinates :as action]}]
   (let [player (player! from)
-        mortar (first
-                (drop-while (comp (partial not= "mortar") :name)
-                            (select-keys player
-                                         [:primary-weapon
-                                          :secondary-weapon])))]
+        level (->> (select-keys player [:primary-weapon
+                                        :secondary-weapon])
+                   (drop-while (comp (partial not= "mortar") :name))
+                   first
+                   :level)]
     (swap! state assoc :action
-           {:coord (mapv +
-                         (:position player)
-                         (parse-coords coordinates))
-            :radius (inc
-                     (:level mortar))})))
+           (assoc action
+             :coord (mapv +
+                          (:position player)
+                          (parse-coords coordinates))
+             :radius (inc level)
+             :dmg (if (= 3 level) 25 20)))))
 
 (defmethod handle-action "move"
   [{:keys [direction from]}]
@@ -122,7 +141,8 @@
 (defmethod handle-message! "gamestate"
   [gamestate]
   (let [new-state (update-in gamestate [:players]
-                             (partial map parse-position))]
+                             (comp (partial sort-by :name)
+                                   (partial map parse-position)))]
     (reset! state new-state)
     (timeout 0)))
 
@@ -207,7 +227,7 @@
                   (js/Math.sqrt 3)
                   (+ k (- j 2))))])
 
-(defn laser-shot [{:keys [start stop]} owner]
+(defn laser-shot [{:keys [start stop dmg direction]} owner]
   (html
    (let [[x_1 y_1] (coords-to-pixel start)
          [x_2 y_2] (coords-to-pixel stop)
@@ -217,17 +237,32 @@
                                  (js/Math.pow y_d 2)))
          width 20
          angle (* (js/Math.atan2 x_d y_d)
-                  (/ -180 js/Math.PI))]
+                  (/ -180 js/Math.PI))
+         hits (->> start
+                   (iterate (partial map + (direction->coord direction)))
+                   (take (length start stop))
+                   rest
+                   (into #{})
+                   (set/intersection
+                    (->> (:players @state)
+                         (map :position)
+                         (into #{}))))]
      [:g
       [:rect
        {:class "laser"
         :x (- x_2 (/ width 2)) :y y_2
         :width width :height height
         :transform (str "rotate(" angle" " x_2 " " y_2 ")")
-        :fill "url(#laser-shot)"}]])))
+        :fill "url(#laser-shot)"}]
+      [:g {:class "display"}
+       (for [hit hits
+             :let [[x y] (coords-to-pixel hit)]]
+         [:text {:class "damage"
+                 :x x :y y}
+          (str "-" dmg "HP")])]])))
 
 
-(defn mortar-shot [{:keys [coord radius]} owner]
+(defn mortar-shot [{:keys [coord dmg radius]} owner]
   (html
    (let [circle [[ 1  0]
                  [ 1  1]
@@ -244,25 +279,35 @@
          ;; path. Lastly, because the each circle completes back at
          ;; the same place it started we remove these all the extra
          ;; points.
-         hits (->> circle
+         area (->> circle
                    repeat
                    (reductions interleave)
                    (take radius)
                    (interleave (repeat '([-1 -1])))
                    (apply concat)
                    (reductions (partial mapv +) coord)
-                   distinct)]
+                   (into #{}))
+         hits (->> (:players @state)
+                   (map :position)
+                   (into #{})
+                   (set/intersection area))]
      [:g (om/build-all hexagon-view
-                       (for [[j k] hits
+                       (for [[j k] area
                              :let [[x y] (coords-to-pixel [j k])]]
                          {:x x
                           :y y
                           :size TILE-SIZE
                           :label "D"
                           :position [j k]})
-                       {:key :position})])))
+                       {:key :position})
+      [:g {:class "display"}
+       (for [hit hits
+             :let [[x y] (coords-to-pixel hit)]]
+         [:text {:class "damage"
+                 :x x :y y}
+          (str "-" dmg "HP")])]])))
 
-(defn droid-shot [{:keys [sequence from]} owner]
+(defn droid-shot [{:keys [sequence from dmg]} owner]
   (reify
     om/IInitState
     (init-state [_]
@@ -293,7 +338,8 @@
                       :cy y
                       :r (/ TILE-SIZE 3)}]]))
         (om/build mortar-shot {:coord explosion
-                               :radius 1})))))
+                               :radius 1
+                               :dmg dmg})))))
 
 (defmulti action-view
   (fn [action _] (:type action)))
