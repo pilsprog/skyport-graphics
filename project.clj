@@ -8,7 +8,7 @@
                  [org.clojure/clojurescript "0.0-2261"]
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [jarohen/chord "0.4.1"]
-                 [om "0.6.4"]
+                 [om "0.7.1"]
                  [sablono "0.2.17"]
 
                  ;; For the server
